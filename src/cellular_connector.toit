@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import cellular
+import device
 import encoding.ubjson
 import gpio
 import log
@@ -283,21 +284,26 @@ class CellularInfo:
 class StateStore:
   static STORE_INFO_KEY_ ::= "connect info"
   static STORE_PSM_KEY_ ::= "is psm"
+  store_ := device.FlashStore
 
   constructor:
 
   store bytes/ByteArray -> bool:
-    throw "not implemented"
+    store_.set STORE_INFO_KEY_ bytes
+    // TODO can we return bool here?
+    return true
 
   load -> ByteArray?:
-    throw "not implemented"
+    return store_.get STORE_INFO_KEY_
 
   remove -> bool:
-    throw "not implemented"
+    return store_.delete STORE_INFO_KEY_
 
   take_is_psm -> bool:
-    throw "not implemented"
+    is_psm := store_.get STORE_PSM_KEY_
+    if is_psm: store_.remove STORE_PSM_KEY_
+    return is_psm ? true : false
     
   set_use_psm -> bool:
-    throw "not implemented"
+    return store_.set STORE_PSM_KEY_ (ByteArray 0)
     
