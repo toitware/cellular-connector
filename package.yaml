@@ -1,1 +1,4 @@
-# Toit Package File.
+dependencies:
+  cellular:
+    url: github.com/toitware/cellular
+    version: ^1.0.0
