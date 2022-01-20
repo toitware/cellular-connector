@@ -1,0 +1,12 @@
+dependencies:
+  cellular:
+    url: github.com/toitware/cellular
+    version: ^1.0.0
+  cellular_connector:
+    path: ..
+  http:
+    url: github.com/toitlang/pkg-http
+    version: ^1.5.0
+  u_blox_cellular:
+    url: github.com/toitware/ublox-cellular
+    version: ^0.1.1
