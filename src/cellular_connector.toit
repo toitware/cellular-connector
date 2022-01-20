@@ -321,13 +321,13 @@ class StateStore:
   load -> ByteArray?:
     return store_.get STORE_INFO_KEY_
 
-  remove -> bool:
-    return store_.delete STORE_INFO_KEY_
+  remove:
+    store_.delete STORE_INFO_KEY_
 
   take_is_psm -> bool:
     is_psm := store_.get STORE_PSM_KEY_
-    if is_psm: store_.remove STORE_PSM_KEY_
+    if is_psm: store_.delete STORE_PSM_KEY_
     return is_psm ? true : false
 
-  set_use_psm -> bool:
-    return store_.set STORE_PSM_KEY_ (ByteArray 0)
+  set_use_psm -> none:
+    store_.set STORE_PSM_KEY_ (ByteArray 0)
