@@ -9,6 +9,16 @@ import gpio
 import log
 import net
 
+class Configuration:
+  is_always_online/bool
+  op/string?
+  apn/string
+  bands/List?
+  rats/List?
+
+  constructor .apn --.is_always_online=true --.op=null --.bands=null --.rats=null:
+
+
 class Connector:
   static SUSTAIN_FOR_DURATION_ ::= Duration --ms=100
   static CONFIGURE_TIMEOUT_ ::= Duration --s=30
@@ -24,13 +34,11 @@ class Connector:
   rts_/gpio.Pin? ::= ?
   rx_/gpio.Pin? ::= ?
 
-  is_always_online/bool ::= true
-  op/string? ::= null
-  apn/string ::= ""
-  bands/List? ::= null
-  rats/List? ::= null
+  config_/Configuration
 
-  constructor .driver_ --.logger_=null --rx=null --rts=null:
+  constructor .driver_ config --logger=null --rx=null --rts=null:
+    config_ = config
+    logger_ = logger
     rts_ = rts
     rx_ = rx
 
@@ -38,7 +46,7 @@ class Connector:
     wait_for_modem_
 
     try:
-      if store_.take_is_psm and not is_always_online:
+      if store_.take_is_psm and not config_.is_always_online:
         logger_.debug "connecting from PSM"
         configure_and_connect_from_psm_
       else:
@@ -49,7 +57,7 @@ class Connector:
 
   configure_and_connect_from_psm_:
     try:
-      operator/string? := op
+      operator/string? := config_.op
       if operator == "": operator = null
       with_timeout CONNECT_TIMEOUT_PSM_TIMEOUT_:
         logger_.debug "connecting" --tags={"operator": operator}
@@ -75,14 +83,11 @@ class Connector:
 
     // Configure the chip. This may make the chip reboot a few times.
     with_timeout CONFIGURE_TIMEOUT_:
-      driver_.configure
-        apn
-        --bands=bands
-        --rats=rats
+      driver_.configure config_.apn --bands=config_.bands --rats=config_.rats
 
     cellular_info := load_cellular_info_
     try:
-      configured_operator := op
+      configured_operator := config_.op
       operator/cellular.Operator? := null
       driver_.enable_radio
 
