@@ -29,7 +29,7 @@ class Connector:
   apn/string ::= ""
   bands/List? ::= null
   rats/List? ::= null
-  
+
   constructor .driver_ --.logger_=null --rx=null --rts=null:
     rts_ = rts
     rx_ = rx
@@ -192,7 +192,7 @@ class Connector:
       wait_for_quiescent_
 
 
-  /** Wait for the modem to report ready. */ 
+  /** Wait for the modem to report ready. */
   wait_for_modem_:
     try:
       try:
@@ -258,18 +258,18 @@ class CellularInfo:
 
   to_byte_array -> ByteArray:
     return ubjson.encode [operators_to_values_, connect_attempts, [latest_operator.op, latest_operator.rat]]
-    
+
   values_to_operators_ values/List:
     res := []
     values.do: | value/List |
-      res.add 
+      res.add
         value_to_operator value
     return res
 
-  operators_to_values_ -> List:    
+  operators_to_values_ -> List:
     res := []
     operators.do: | operator/cellular.Operator |
-      res.add 
+      res.add
         operator_to_value operator
     return res
 
@@ -303,7 +303,6 @@ class StateStore:
     is_psm := store_.get STORE_PSM_KEY_
     if is_psm: store_.remove STORE_PSM_KEY_
     return is_psm ? true : false
-    
+
   set_use_psm -> bool:
     return store_.set STORE_PSM_KEY_ (ByteArray 0)
-    
