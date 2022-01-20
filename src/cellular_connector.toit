@@ -56,6 +56,9 @@ class Connector:
       if is_exception: close
 
   configure_and_connect_from_psm_:
+    cellular_info := load_cellular_info_
+    cellular_info.total_attempts++
+    store_cellular_info_ cellular_info
     try:
       operator/string? := config_.op
       if operator == "": operator = null
@@ -63,11 +66,13 @@ class Connector:
         logger_.debug "connecting" --tags={"operator": operator}
         driver_.connect_psm
         logger_.debug "connected successfully"
+        cellular_info.total_attempts = 0
+        store_cellular_info_ cellular_info
 
     finally: | is_exception _ |
       if not is_exception and driver_.use_psm: store_.set_use_psm
 
-      if is_exception:
+      if is_exception and cellular_info.total_attempts > 0:
         // Detach if connect failed (that will force a full scan at next connect).
         logger_.debug "failed, detach from network"
         // TODO: We should probably only do this after e.g. 10 failed attempts.
@@ -86,6 +91,13 @@ class Connector:
       driver_.configure config_.apn --bands=config_.bands --rats=config_.rats
 
     cellular_info := load_cellular_info_
+    cellular_info.total_attempts++
+    logger_.debug "state" --tags={
+      "latest_operator": cellular_info.latest_operator,
+      "operators": cellular_info.operators,
+      "connect_attempts": cellular_info.connect_attempts,
+      "total_attempts": cellular_info.connect_attempts,
+    }
     try:
       configured_operator := config_.op
       operator/cellular.Operator? := null
@@ -138,9 +150,8 @@ class Connector:
       store_cellular_info_ cellular_info
       if connect_to_operator_ operator --attempt=cellular_info.connect_attempts:
         if not operator: operator = driver_.get_connected_operator
+        reset_info_ cellular_info
         cellular_info.latest_operator = operator
-        cellular_info.operators = []
-        cellular_info.connect_attempts = 0
         store_cellular_info_ cellular_info
       else:
         throw "CONNECTION FAILED"
@@ -150,10 +161,10 @@ class Connector:
 
       if is_exception:
         driver_.disable_radio
-        // Detach if connect failed (that will force a full scan at next connect).
-        logger_.debug "failed, detach from network"
-        // TODO(anders): We should probably only do this after e.g. 10 failed attempts.
-        catch --trace: driver_.detach
+        if cellular_info.total_attempts == 10:
+          // Detach if connect failed (that will force a full scan at next connect).
+          logger_.debug "failed, detach from network"
+          catch --trace: driver_.detach
 
 
   connect_to_operators_ cellular_info/CellularInfo -> bool:
@@ -246,23 +257,32 @@ class Connector:
 reset_info_ info/CellularInfo -> none:
   info.operators = []
   info.connect_attempts = 0
+  info.total_attempts = 0
   info.latest_operator = null
 
 class CellularInfo:
   operators/List := []
   connect_attempts/int := 0
+  total_attempts := 0
   latest_operator/cellular.Operator? := null
 
   constructor:
 
   constructor.from_bytes bytes/ByteArray:
     values := ubjson.decode bytes
+    if values.size != 4:
+      (StateStore).remove
+      throw "invalid info bytes"
     operators = values_to_operators_ values[0]
     connect_attempts = values[1]
-    latest_operator = value_to_operator values[2]
+    total_attempts = values[2]
+    latest_operator = values[3] ? value_to_operator values[3] : null
+
+  stringify -> string:
+    return "operators: $operators, connect_attempts: $connect_attempts, total_attempts: $total_attempts, latest_operator: $latest_operator"
 
   to_byte_array -> ByteArray:
-    return ubjson.encode [operators_to_values_, connect_attempts, [latest_operator.op, latest_operator.rat]]
+    return ubjson.encode [operators_to_values_, connect_attempts, total_attempts, latest_operator ? [latest_operator.op, latest_operator.rat] : null]
 
   values_to_operators_ values/List:
     res := []
