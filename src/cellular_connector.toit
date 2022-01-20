@@ -139,11 +139,16 @@ class Connector:
               store_cellular_info_ cellular_info
 
         logger_.debug "attempt connect to scanned operator"
-        if connect_to_operators_ cellular_info:
-          return
-        // We have tried all scanned operators. Reset state.
-        reset_info_ cellular_info
-        store_cellular_info_ cellular_info
+        connected := false
+        try:
+          connected = connect_to_operators_ cellular_info
+          if connected:
+            return
+        finally:
+          if cellular_info.operators.is_empty and not connected:
+            // We have tried all scanned operators. Reset state.
+            reset_info_ cellular_info
+            store_cellular_info_ cellular_info
         throw "CONNECTION FAILED"
 
       cellular_info.connect_attempts++
