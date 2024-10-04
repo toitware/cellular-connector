@@ -19,10 +19,10 @@ RESET_N_NUM ::= 4
 
 main:
   pwr_on :=  gpio.Pin PWR_ON_NUM
-  pwr_on.config --output --open_drain
+  pwr_on.configure --output --open_drain
   pwr_on.set 1
   reset_n := gpio.Pin RESET_N_NUM
-  reset_n.config --output --open_drain
+  reset_n.configure --output --open_drain
   reset_n.set 1
   tx := gpio.Pin TX_PIN_NUM
   rx := gpio.Pin RX_PIN_NUM

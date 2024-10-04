@@ -1,3 +1,5 @@
+name: cellular-connector
+description: Strategy for connecting with a cellular modem.
 dependencies:
   cellular:
     url: github.com/toitware/cellular
