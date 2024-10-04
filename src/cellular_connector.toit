@@ -10,21 +10,21 @@ import net
 import system.storage
 
 class Configuration:
-  is_always_online/bool
+  is-always-online/bool
   op/string?
   apn/string
   bands/List?
   rats/List?
 
-  constructor .apn --.is_always_online=true --.op=null --.bands=null --.rats=null:
+  constructor .apn --.is-always-online=true --.op=null --.bands=null --.rats=null:
 
 
 class Connector:
-  static SUSTAIN_FOR_DURATION_ ::= Duration --ms=100
-  static CONFIGURE_TIMEOUT_ ::= Duration --s=30
-  static CONNECT_TIMEOUT_PSM_TIMEOUT_ ::= Duration --s=15
-  static CONNECT_AUTOMATIC_TIMEOUT_ ::= Duration --s=25
-  static CONNECT_KNOWN_TIMEOUT_ ::= Duration --s=10
+  static SUSTAIN-FOR-DURATION_ ::= Duration --ms=100
+  static CONFIGURE-TIMEOUT_ ::= Duration --s=30
+  static CONNECT-TIMEOUT-PSM-TIMEOUT_ ::= Duration --s=15
+  static CONNECT-AUTOMATIC-TIMEOUT_ ::= Duration --s=25
+  static CONNECT-KNOWN-TIMEOUT_ ::= Duration --s=10
 
   driver_/cellular.Cellular
   logger_/log.Logger?
@@ -43,42 +43,42 @@ class Connector:
     rx_ = rx
 
   connect -> net.Interface:
-    wait_for_modem_
+    wait-for-modem_
 
     try:
-      if store_.take_is_psm and not config_.is_always_online:
+      if store_.take-is-psm and not config_.is-always-online:
         logger_.debug "connecting from PSM"
-        configure_and_connect_from_psm_
+        configure-and-connect-from-psm_
       else:
-        configure_and_connect_default_
-      return driver_.network_interface
-    finally: | is_exception _ |
-      if is_exception: close
+        configure-and-connect-default_
+      return driver_.network-interface
+    finally: | is-exception _ |
+      if is-exception: close
 
-  configure_and_connect_from_psm_:
-    cellular_info := load_cellular_info_
-    cellular_info.total_attempts++
-    store_cellular_info_ cellular_info
+  configure-and-connect-from-psm_:
+    cellular-info := load-cellular-info_
+    cellular-info.total-attempts++
+    store-cellular-info_ cellular-info
     try:
       operator/string? := config_.op
       if operator == "": operator = null
-      with_timeout CONNECT_TIMEOUT_PSM_TIMEOUT_:
+      with-timeout CONNECT-TIMEOUT-PSM-TIMEOUT_:
         logger_.debug "connecting" --tags={"operator": operator}
-        driver_.connect_psm
+        driver_.connect-psm
         logger_.debug "connected successfully"
-        cellular_info.total_attempts = 0
-        store_cellular_info_ cellular_info
+        cellular-info.total-attempts = 0
+        store-cellular-info_ cellular-info
 
-    finally: | is_exception _ |
-      if not is_exception and driver_.use_psm: store_.set_use_psm
+    finally: | is-exception _ |
+      if not is-exception and driver_.use-psm: store_.set-use-psm
 
-      if is_exception and cellular_info.total_attempts > 0:
+      if is-exception and cellular-info.total-attempts > 0:
         // Detach if connect failed (that will force a full scan at next connect).
         logger_.debug "failed, detach from network"
         // TODO: We should probably only do this after e.g. 10 failed attempts.
         catch --trace: driver_.detach
 
-  configure_and_connect_default_:
+  configure-and-connect-default_:
     // Print out the modem information.
     logger_.debug "initialized" --tags={
       "model": driver_.model,
@@ -87,106 +87,106 @@ class Connector:
     }
 
     // Configure the chip. This may make the chip reboot a few times.
-    with_timeout CONFIGURE_TIMEOUT_:
+    with-timeout CONFIGURE-TIMEOUT_:
       driver_.configure config_.apn --bands=config_.bands --rats=config_.rats
 
-    cellular_info := load_cellular_info_
-    cellular_info.total_attempts++
+    cellular-info := load-cellular-info_
+    cellular-info.total-attempts++
     logger_.debug "state" --tags={
-      "latest_operator": cellular_info.latest_operator,
-      "operators": cellular_info.operators,
-      "connect_attempts": cellular_info.connect_attempts,
-      "total_attempts": cellular_info.connect_attempts,
+      "latest_operator": cellular-info.latest-operator,
+      "operators": cellular-info.operators,
+      "connect_attempts": cellular-info.connect-attempts,
+      "total_attempts": cellular-info.connect-attempts,
     }
     try:
-      configured_operator := config_.op
+      configured-operator := config_.op
       operator/cellular.Operator? := null
-      driver_.enable_radio
+      driver_.enable-radio
 
-      if configured_operator and configured_operator != "":
-        cellular_info.connect_attempts++
-        store_cellular_info_ cellular_info
+      if configured-operator and configured-operator != "":
+        cellular-info.connect-attempts++
+        store-cellular-info_ cellular-info
 
-        operator = cellular.Operator configured_operator
-        if connect_to_operator_ operator --attempt=cellular_info.connect_attempts:
-          cellular_info.connect_attempts = 0
-          store_cellular_info_ cellular_info
+        operator = cellular.Operator configured-operator
+        if connect-to-operator_ operator --attempt=cellular-info.connect-attempts:
+          cellular-info.connect-attempts = 0
+          store-cellular-info_ cellular-info
           return
         throw "failed to connect to operator: '$operator'"
 
-      operator = cellular_info.latest_operator
+      operator = cellular-info.latest-operator
       // Attempt a stored operator?
       if operator:
-        if cellular_info.connect_attempts < 2:
+        if cellular-info.connect-attempts < 2:
           logger_.debug "attempt connect to known operator"
         else:
           // Last attempt to connect to known operator.
-          cellular_info.latest_operator = null
-          cellular_info.connect_attempts = 0
-      else if cellular_info.connect_attempts < 3:
+          cellular-info.latest-operator = null
+          cellular-info.connect-attempts = 0
+      else if cellular-info.connect-attempts < 3:
         logger_.debug "attempt modem's automatic connect"
-      else if cellular_info.connect_attempts > 30:
+      else if cellular-info.connect-attempts > 30:
         // Something is wrong! Reset state.
-        reset_info_ cellular_info
+        reset-info_ cellular-info
       else:
-        if cellular_info.operators.is_empty:
+        if cellular-info.operators.is-empty:
           logger_.debug "scan for available operators"
           try:
-            cellular_info.operators = driver_.scan_for_operators
-          finally: | is_exception _ |
-            if is_exception:
-              reset_info_ cellular_info
-              store_cellular_info_ cellular_info
+            cellular-info.operators = driver_.scan-for-operators
+          finally: | is-exception _ |
+            if is-exception:
+              reset-info_ cellular-info
+              store-cellular-info_ cellular-info
 
         logger_.debug "attempt connect to scanned operator"
         connected := false
         try:
-          connected = connect_to_operators_ cellular_info
+          connected = connect-to-operators_ cellular-info
           if connected:
             return
         finally:
-          if cellular_info.operators.is_empty and not connected:
+          if cellular-info.operators.is-empty and not connected:
             // We have tried all scanned operators. Reset state.
-            reset_info_ cellular_info
-            store_cellular_info_ cellular_info
+            reset-info_ cellular-info
+            store-cellular-info_ cellular-info
         throw "CONNECTION FAILED"
 
-      cellular_info.connect_attempts++
-      store_cellular_info_ cellular_info
-      if connect_to_operator_ operator --attempt=cellular_info.connect_attempts:
-        if not operator: operator = driver_.get_connected_operator
-        reset_info_ cellular_info
-        cellular_info.latest_operator = operator
-        store_cellular_info_ cellular_info
+      cellular-info.connect-attempts++
+      store-cellular-info_ cellular-info
+      if connect-to-operator_ operator --attempt=cellular-info.connect-attempts:
+        if not operator: operator = driver_.get-connected-operator
+        reset-info_ cellular-info
+        cellular-info.latest-operator = operator
+        store-cellular-info_ cellular-info
       else:
         throw "CONNECTION FAILED"
 
-    finally: | is_exception _ |
-      if not is_exception and driver_.use_psm: store_.set_use_psm
+    finally: | is-exception _ |
+      if not is-exception and driver_.use-psm: store_.set-use-psm
 
-      if is_exception:
-        driver_.disable_radio
-        if cellular_info.total_attempts == 10:
+      if is-exception:
+        driver_.disable-radio
+        if cellular-info.total-attempts == 10:
           // Detach if connect failed (that will force a full scan at next connect).
           logger_.debug "failed, detach from network"
           catch --trace: driver_.detach
 
 
-  connect_to_operators_ cellular_info/CellularInfo -> bool:
-    while not cellular_info.operators.is_empty:
-      operator/cellular.Operator := cellular_info.operators.last
-      cellular_info.operators.remove_last
-      cellular_info.connect_attempts++
-      store_cellular_info_ cellular_info
-      if connect_to_operator_ operator --attempt=1:
-        cellular_info.latest_operator = operator
+  connect-to-operators_ cellular-info/CellularInfo -> bool:
+    while not cellular-info.operators.is-empty:
+      operator/cellular.Operator := cellular-info.operators.last
+      cellular-info.operators.remove-last
+      cellular-info.connect-attempts++
+      store-cellular-info_ cellular-info
+      if connect-to-operator_ operator --attempt=1:
+        cellular-info.latest-operator = operator
         return true
     return false
 
-  connect_to_operator_ operator/cellular.Operator? --attempt/int? -> bool:
-    timeout := operator ? CONNECT_KNOWN_TIMEOUT_ : CONNECT_AUTOMATIC_TIMEOUT_
-    catch --unwind=(: | exception | exception != DEADLINE_EXCEEDED_ERROR):
-      with_timeout timeout:
+  connect-to-operator_ operator/cellular.Operator? --attempt/int? -> bool:
+    timeout := operator ? CONNECT-KNOWN-TIMEOUT_ : CONNECT-AUTOMATIC-TIMEOUT_
+    catch --unwind=(: | exception | exception != DEADLINE-EXCEEDED-ERROR):
+      with-timeout timeout:
         logger_.debug "connecting" --tags={"operator": operator, "attempt": attempt}
         result := driver_.connect --operator=operator
         if result: logger_.debug "connected successfully"
@@ -199,143 +199,143 @@ class Connector:
       try:
         // Tell chip to turn off.
         driver_.close
-      finally: | is_exception _ |
-        if is_exception:
+      finally: | is-exception _ |
+        if is-exception:
           // If the chip was recently rebooted, wait for it to be responsive before
           // communicating with it.
-          driver_.wait_for_ready
+          driver_.wait-for-ready
           driver_.close
     finally:
       // Wait for chip to signal power-off.
       if rts_:
         rts_.configure --output
         rts_.set 0
-      wait_for_quiescent_
+      wait-for-quiescent_
 
 
   /** Wait for the modem to report ready. */
-  wait_for_modem_:
+  wait-for-modem_:
     try:
       try:
-        with_timeout --ms=15_000:
-          driver_.wait_for_ready
+        with-timeout --ms=15_000:
+          driver_.wait-for-ready
         logger_.debug "modem ready"
-      finally: | is_exception _ |
-        if is_exception:
+      finally: | is-exception _ |
+        if is-exception:
           logger_.debug "did not report ready, closing modem"
-          with_timeout --ms=5_000:
+          with-timeout --ms=5_000:
             driver_.close
-    finally: | is_exception _ |
-      if is_exception:
+    finally: | is-exception _ |
+      if is-exception:
         logger_.debug "did not close, trying hardware recover of modem"
-        with_timeout --ms=15_000:
-          driver_.recover_modem
+        with-timeout --ms=15_000:
+          driver_.recover-modem
 
   // Block until a value has been sustained for at least $SUSTAIN_FOR_DURATION_.
-  wait_for_quiescent_:
+  wait-for-quiescent_:
     logger_.debug "waiting for quiescent rx pin"
     rx_.configure --input
     while true:
       value := rx_.get
 
       // See if value is sustained for the required amount.
-      e := catch --unwind=(: it != DEADLINE_EXCEEDED_ERROR):
-        with_timeout SUSTAIN_FOR_DURATION_:
-          rx_.wait_for 1 - value
+      e := catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):
+        with-timeout SUSTAIN-FOR-DURATION_:
+          rx_.wait-for 1 - value
 
       // If we timed out, we're done.
       if e:
         logger_.debug "waiting for quiescent rx pin -> done" --tags={"value": value}
         return
 
-  load_cellular_info_ -> CellularInfo:
+  load-cellular-info_ -> CellularInfo:
     bytes := store_.load
     if bytes:
       e := catch --trace:
-        return CellularInfo.from_bytes bytes
+        return CellularInfo.from-bytes bytes
       if e: store_.remove
     return CellularInfo
 
-  store_cellular_info_ info/CellularInfo -> bool:
-    return store_.store info.to_byte_array
+  store-cellular-info_ info/CellularInfo -> bool:
+    return store_.store info.to-byte-array
 
-reset_info_ info/CellularInfo -> none:
+reset-info_ info/CellularInfo -> none:
   info.operators = []
-  info.connect_attempts = 0
-  info.total_attempts = 0
-  info.latest_operator = null
+  info.connect-attempts = 0
+  info.total-attempts = 0
+  info.latest-operator = null
 
 class CellularInfo:
   operators/List := []
-  connect_attempts/int := 0
-  total_attempts := 0
-  latest_operator/cellular.Operator? := null
+  connect-attempts/int := 0
+  total-attempts := 0
+  latest-operator/cellular.Operator? := null
 
   constructor:
 
-  constructor.from_bytes bytes/ByteArray:
+  constructor.from-bytes bytes/ByteArray:
     values := ubjson.decode bytes
     if values.size != 4:
       (StateStore).remove
       throw "invalid info bytes"
-    operators = values_to_operators_ values[0]
-    connect_attempts = values[1]
-    total_attempts = values[2]
-    latest_operator = values[3] ? value_to_operator values[3] : null
+    operators = values-to-operators_ values[0]
+    connect-attempts = values[1]
+    total-attempts = values[2]
+    latest-operator = values[3] ? value-to-operator values[3] : null
 
   stringify -> string:
-    return "operators: $operators, connect_attempts: $connect_attempts, total_attempts: $total_attempts, latest_operator: $latest_operator"
+    return "operators: $operators, connect_attempts: $connect-attempts, total_attempts: $total-attempts, latest_operator: $latest-operator"
 
-  to_byte_array -> ByteArray:
-    return ubjson.encode [operators_to_values_, connect_attempts, total_attempts, latest_operator ? [latest_operator.op, latest_operator.rat] : null]
+  to-byte-array -> ByteArray:
+    return ubjson.encode [operators-to-values_, connect-attempts, total-attempts, latest-operator ? [latest-operator.op, latest-operator.rat] : null]
 
-  values_to_operators_ values/List:
+  values-to-operators_ values/List:
     res := []
     values.do: | value/List |
       res.add
-        value_to_operator value
+        value-to-operator value
     return res
 
-  operators_to_values_ -> List:
+  operators-to-values_ -> List:
     res := []
     operators.do: | operator/cellular.Operator |
       res.add
-        operator_to_value operator
+        operator-to-value operator
     return res
 
-  operator_to_value operator/cellular.Operator -> List:
+  operator-to-value operator/cellular.Operator -> List:
     return [operator.op, operator.rat]
 
-  value_to_operator value/List -> cellular.Operator:
+  value-to-operator value/List -> cellular.Operator:
     if value.size != 2: throw "invalid operator value"
 
     return cellular.Operator value[0] --rat=value[1]
 
 class StateStore:
-  static STORE_PATH_ ::= "toit.io/cellular_connector"
-  static STORE_INFO_KEY_ ::= "connect info"
-  static STORE_PSM_KEY_ ::= "is psm"
+  static STORE-PATH_ ::= "toit.io/cellular_connector"
+  static STORE-INFO-KEY_ ::= "connect info"
+  static STORE-PSM-KEY_ ::= "is psm"
 
   bucket_/storage.Bucket
 
   constructor:
-    bucket_ = storage.Bucket.open --flash STORE_PATH_
+    bucket_ = storage.Bucket.open --flash STORE-PATH_
 
   store bytes/ByteArray -> bool:
-    bucket_[STORE_INFO_KEY_] = bytes
+    bucket_[STORE-INFO-KEY_] = bytes
     // TODO can we return bool here?
     return true
 
   load -> ByteArray?:
-    return bucket_.get STORE_INFO_KEY_
+    return bucket_.get STORE-INFO-KEY_
 
   remove:
-    bucket_.remove STORE_INFO_KEY_
+    bucket_.remove STORE-INFO-KEY_
 
-  take_is_psm -> bool:
-    is_psm := bucket_.get STORE_PSM_KEY_
-    if is_psm: bucket_.remove STORE_PSM_KEY_
-    return is_psm ? true : false
+  take-is-psm -> bool:
+    is-psm := bucket_.get STORE-PSM-KEY_
+    if is-psm: bucket_.remove STORE-PSM-KEY_
+    return is-psm ? true : false
 
-  set_use_psm -> none:
-    bucket_[STORE_PSM_KEY_] = #[]
+  set-use-psm -> none:
+    bucket_[STORE-PSM-KEY_] = #[]
