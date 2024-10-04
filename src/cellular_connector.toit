@@ -3,11 +3,11 @@
 // found in the LICENSE file.
 
 import cellular
-import device
 import encoding.ubjson
 import gpio
 import log
 import net
+import system.storage
 
 class Configuration:
   is_always_online/bool
@@ -208,7 +208,7 @@ class Connector:
     finally:
       // Wait for chip to signal power-off.
       if rts_:
-        rts_.config --output
+        rts_.configure --output
         rts_.set 0
       wait_for_quiescent_
 
@@ -234,7 +234,7 @@ class Connector:
   // Block until a value has been sustained for at least $SUSTAIN_FOR_DURATION_.
   wait_for_quiescent_:
     logger_.debug "waiting for quiescent rx pin"
-    rx_.config --input
+    rx_.configure --input
     while true:
       value := rx_.get
 
@@ -312,27 +312,30 @@ class CellularInfo:
     return cellular.Operator value[0] --rat=value[1]
 
 class StateStore:
+  static STORE_PATH_ ::= "toit.io/cellular_connector"
   static STORE_INFO_KEY_ ::= "connect info"
   static STORE_PSM_KEY_ ::= "is psm"
-  store_ := device.FlashStore
+
+  bucket_/storage.Bucket
 
   constructor:
+    bucket_ = storage.Bucket.open --flash STORE_PATH_
 
   store bytes/ByteArray -> bool:
-    store_.set STORE_INFO_KEY_ bytes
+    bucket_[STORE_INFO_KEY_] = bytes
     // TODO can we return bool here?
     return true
 
   load -> ByteArray?:
-    return store_.get STORE_INFO_KEY_
+    return bucket_.get STORE_INFO_KEY_
 
   remove:
-    store_.delete STORE_INFO_KEY_
+    bucket_.remove STORE_INFO_KEY_
 
   take_is_psm -> bool:
-    is_psm := store_.get STORE_PSM_KEY_
-    if is_psm: store_.delete STORE_PSM_KEY_
+    is_psm := bucket_.get STORE_PSM_KEY_
+    if is_psm: bucket_.remove STORE_PSM_KEY_
     return is_psm ? true : false
 
   set_use_psm -> none:
-    store_.set STORE_PSM_KEY_ (ByteArray 0)
+    bucket_[STORE_PSM_KEY_] = #[]
